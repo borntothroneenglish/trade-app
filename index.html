@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Personal Trade Interpreter</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --card-bg: #151d2a;
-            --card-border: #26334d;
+            --bg-color: #080c14;
+            --card-bg: rgba(21, 30, 48, 0.7);
+            --card-border: rgba(56, 189, 248, 0.2);
             --accent-blue: #38bdf8;
-            --accent-green: #22c55e;
-            --accent-red: #f43f5e;
+            --accent-green: #4ade80;
+            --accent-red: #fb7185;
+            --accent-gold: #fbbf24;
             --text-main: #f8fafc;
             --text-sub: #94a3b8;
         }
@@ -19,8 +21,8 @@
         * { box-sizing: border-box; touch-action: manipulation; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
+            font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background: radial-gradient(circle at top center, #111827 0%, #080c14 100%);
             color: var(--text-main);
             margin: 0;
             padding: 16px;
@@ -35,7 +37,7 @@
             max-width: 900px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -45,11 +47,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .title { font-size: 1rem; font-weight: 800; color: var(--accent-blue); }
+        .title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
         
         .api-input-group {
             display: flex;
@@ -58,74 +67,121 @@
         }
 
         input[type="password"] {
-            background: #020617;
-            border: 1px solid var(--card-border);
+            background: rgba(2, 6, 23, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: var(--text-main);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            width: 220px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            width: 200px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        input[type="password"]:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
         }
 
         .btn {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
             color: var(--text-main);
-            padding: 10px 16px;
-            border-radius: 8px;
+            padding: 12px 18px;
+            border-radius: 12px;
             font-weight: 700;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 1rem;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .btn-primary { background: #2563eb; border-color: #3b82f6; }
-        .btn-danger { background: #e11d48; border-color: #f43f5e; }
-        .btn-rotate { background: #334155; border-color: #475569; }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            border-color: #60a5fa;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e11d48, #be123c);
+            border-color: #f87171;
+            box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .btn-rotate {
+            background: rgba(51, 65, 85, 0.6);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
 
         .alert-box {
             display: none;
-            background: rgba(244, 63, 94, 0.15);
+            background: rgba(244, 63, 94, 0.12);
             border: 1px solid var(--accent-red);
             color: #fda4af;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 700;
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
             word-break: break-all;
-            line-height: 1.4;
+            line-height: 1.5;
+            backdrop-filter: blur(8px);
         }
 
-        .card-stack { display: flex; flex-direction: column; gap: 10px; }
+        .card-stack { display: flex; flex-direction: column; gap: 14px; }
 
         .card {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease-in-out;
         }
 
         .card-header {
-            font-size: 0.8rem;
+            font-size: 0.95rem;
             font-weight: 800;
-            color: var(--text-sub);
-            margin-bottom: 6px;
+            color: var(--accent-blue);
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            letter-spacing: 0.5px;
         }
 
         .card-body {
-            font-size: 1.25rem;
+            font-size: 1.65rem; /* 폰트 크기 대폭 확대 */
+            font-weight: 600;
             line-height: 1.5;
             word-break: break-all;
+            color: #ffffff;
         }
 
         .raw-box {
-            border-style: dashed;
-            background: #090e17;
-            color: var(--text-sub);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            background: rgba(10, 15, 26, 0.6);
         }
 
-        .raw-body { font-size: 1rem; }
+        .raw-box .card-header { color: var(--text-sub); }
+        .raw-body { font-size: 1.25rem; color: #cbd5e1; font-weight: 400; }
+
+        .badge {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 700;
+        }
+        
+        .badge-ready { background: rgba(74, 222, 128, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .badge-warn { background: rgba(251, 113, 133, 0.15); color: var(--accent-red); border: 1px solid var(--accent-red); }
     </style>
 </head>
 <body>
@@ -144,7 +200,7 @@
     </div>
 
     <div style="display: flex; gap: 10px;">
-        <button id="micBtn" class="btn btn-primary" style="flex: 1; padding: 16px; font-size: 1.1rem;" onclick="toggleMic()">🎙 음성 인식 시작</button>
+        <button id="micBtn" class="btn btn-primary" style="flex: 1; padding: 20px; font-size: 1.3rem;" onclick="toggleMic()">🎙 음성 인식 시작</button>
     </div>
 
     <div class="card-stack">
@@ -156,7 +212,7 @@
         <div class="card">
             <div class="card-header">
                 <span>🇰🇷 Business Korean</span>
-                <span id="statusTag" style="color: var(--accent-green)">READY</span>
+                <span id="statusTag" class="badge badge-ready">READY</span>
             </div>
             <div id="krText" class="card-body">-</div>
         </div>
@@ -305,7 +361,6 @@ Return strictly JSON matching this structure:
   "entities": ["100,000 MT", "CIF Korea", "USD 1,200"]
 }`;
 
-        // 최신 및 보편적 호환 모델명 지정
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
 
         try {
@@ -343,14 +398,15 @@ Return strictly JSON matching this structure:
         const translatedNumbers = translatedText.match(/\d+/g) || [];
 
         const missingNumbers = rawNumbers.filter(n => !translatedNumbers.includes(n));
+        const statusTag = document.getElementById('statusTag');
 
         if (missingNumbers.length > 0) {
             showAlert(`원문의 수치(${missingNumbers.join(', ')})가 번역에서 누락되었을 수 있습니다.`);
-            document.getElementById('statusTag').innerText = "WARNING";
-            document.getElementById('statusTag').style.color = "var(--accent-red)";
+            statusTag.innerText = "WARNING";
+            statusTag.className = "badge badge-warn";
         } else {
-            document.getElementById('statusTag').innerText = "VERIFIED";
-            document.getElementById('statusTag').style.color = "var(--accent-green)";
+            statusTag.innerText = "VERIFIED";
+            statusTag.className = "badge badge-ready";
         }
 
         document.getElementById('krText').innerHTML = data.cleaned_korean;
