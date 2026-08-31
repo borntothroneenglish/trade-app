@@ -129,6 +129,15 @@
             animation: pulse 1.5s infinite;
         }
 
+        .btn-retranslate {
+            background: linear-gradient(135deg, #059669, #10b981);
+            border-color: #34d399;
+            color: #ffffff;
+            font-size: 0.9rem;
+            padding: 6px 14px;
+            border-radius: 8px;
+        }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.02); }
@@ -183,12 +192,31 @@
         }
 
         .raw-box {
-            border: 1px dashed rgba(255, 255, 255, 0.2);
-            background: rgba(10, 15, 26, 0.6);
+            border: 1px dashed rgba(56, 189, 248, 0.4);
+            background: rgba(10, 15, 26, 0.8);
         }
 
         .raw-box .card-header { color: var(--text-sub); }
-        .raw-body { font-size: 1.25rem; color: #cbd5e1; font-weight: 400; }
+
+        .raw-textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #cbd5e1;
+            font-size: 1.25rem;
+            font-family: inherit;
+            font-weight: 400;
+            resize: vertical;
+            outline: none;
+            min-height: 70px;
+            line-height: 1.5;
+        }
+
+        .raw-textarea:focus {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+        }
 
         .badge {
             font-size: 0.8rem;
@@ -216,7 +244,6 @@
         ⚠️ <strong>[오류 상세]</strong> <br><span id="alertMsg"></span>
     </div>
 
-    <!-- 입력 언어 선택 탭 -->
     <div class="lang-selector">
         <button id="lang-ko" class="lang-btn active" onclick="setLanguage('ko-KR', 'lang-ko')">🇰🇷 한국어 말하기</button>
         <button id="lang-en" class="lang-btn" onclick="setLanguage('en-US', 'lang-en')">🇺🇸 English</button>
@@ -229,8 +256,11 @@
 
     <div class="card-stack">
         <div class="card raw-box">
-            <div class="card-header">음성 인식 원문 (STT Raw)</div>
-            <div id="rawText" class="card-body raw-body">마이크 버튼을 누르고 말씀하세요.</div>
+            <div class="card-header">
+                <span>✏️ 원문 (누적 입력 중)</span>
+                <button class="btn btn-retranslate" onclick="retranslateManual()">⚡ 수동 번역 실행</button>
+            </div>
+            <textarea id="rawInput" class="raw-textarea" placeholder="마이크를 켜고 편하게 말씀하세요. 말씀이 끝나면 '🛑 완료' 버튼을 누르시면 됩니다."></textarea>
         </div>
 
         <div class="card">
@@ -256,7 +286,8 @@
 <script>
     let recognition = null;
     let isRecording = false;
-    let currentLang = 'ko-KR'; // 기본 인식 언어
+    let currentLang = 'ko-KR';
+    let finalTranscript = ''; // 누적 텍스트 저장을 위한 변수
 
     window.onload = () => {
         const savedKey = localStorage.getItem('gemini_api_key');
@@ -294,36 +325,32 @@
 
         try {
             recognition = new SpeechRecognition();
-            recognition.continuous = false;
+            // 연속 인식 옵션을 true로 설정하여 중간 끊김 방지
+            recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = currentLang;
 
             recognition.onstart = () => {
                 isRecording = true;
+                finalTranscript = '';
                 const btn = document.getElementById('micBtn');
-                btn.innerText = "🛑 음성 인식 중단 (듣는 중...)";
+                btn.innerText = "🛑 음성 인식 완료 및 번역";
                 btn.className = "btn btn-danger";
-                document.getElementById('rawText').innerText = "음성을 인식하고 있습니다...";
+                document.getElementById('rawInput').value = "";
             };
 
             recognition.onresult = (event) => {
-                let interim = '';
-                let final = '';
+                let interimTranscript = '';
 
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        final += event.results[i][0].transcript;
+                        finalTranscript += event.results[i][0].transcript + ' ';
                     } else {
-                        interim += event.results[i][0].transcript;
+                        interimTranscript += event.results[i][0].transcript;
                     }
                 }
 
-                const currentText = final || interim;
-                document.getElementById('rawText').innerText = currentText;
-
-                if (final) {
-                    processWithGemini(final);
-                }
+                document.getElementById('rawInput').value = finalTranscript + interimTranscript;
             };
 
             recognition.onerror = (event) => {
@@ -333,10 +360,20 @@
                 } else if (event.error !== 'no-speech') {
                     showAlert("음성 인식 오류: " + event.error);
                 }
-                stopMicUI();
             };
 
-            recognition.onend = () => { stopMicUI(); };
+            // 안드로이드 크롬 등에서 강제로 끊어졌을 때 지속적으로 녹음 중이면 자동 재시작
+            recognition.onend = () => {
+                if (isRecording) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        stopMicUI();
+                    }
+                } else {
+                    stopMicUI();
+                }
+            };
         } catch (e) {
             showAlert("음성 인식 초기화 실패: " + e.message);
         }
@@ -364,8 +401,22 @@
                 }, 200);
             }
         } else {
+            // 녹음 중단 누르면 마이크 끄고 누적된 텍스트 전체 번역 실행
+            isRecording = false;
             recognition.stop();
             stopMicUI();
+            
+            const textToTranslate = document.getElementById('rawInput').value.trim();
+            if (textToTranslate) {
+                processWithGemini(textToTranslate);
+            }
+        }
+    }
+
+    function retranslateManual() {
+        const text = document.getElementById('rawInput').value.trim();
+        if (text) {
+            processWithGemini(text);
         }
     }
 
