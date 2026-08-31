@@ -89,8 +89,10 @@
             color: #fda4af;
             padding: 12px 16px;
             border-radius: 8px;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 700;
+            word-break: break-all;
+            line-height: 1.4;
         }
 
         .card-stack { display: flex; flex-direction: column; gap: 10px; }
@@ -138,7 +140,7 @@
     </header>
 
     <div id="alertBanner" class="alert-box">
-        ⚠️ <strong>[경고]</strong> <span id="alertMsg"></span>
+        ⚠️ <strong>[오류 상세]</strong> <br><span id="alertMsg"></span>
     </div>
 
     <div style="display: flex; gap: 10px;">
@@ -236,20 +238,15 @@
             recognition.onerror = (event) => {
                 console.error("STT Error:", event.error);
                 if (event.error === 'not-allowed') {
-                    showAlert("마이크 접근 권한이 거부되었습니다. 브라우저 설정에서 마이크를 허용해 주세요.");
-                } else if (event.error === 'no-speech') {
-                    // 음성이 입력되지 않은 경우는 무시
-                } else {
+                    showAlert("마이크 접근 권한이 거부되었습니다.");
+                } else if (event.error !== 'no-speech') {
                     showAlert("음성 인식 오류: " + event.error);
                 }
                 stopMicUI();
             };
 
-            recognition.onend = () => {
-                stopMicUI();
-            };
+            recognition.onend = () => { stopMicUI(); };
         } catch (e) {
-            console.error("Initialization Error:", e);
             showAlert("음성 인식 초기화 실패: " + e.message);
         }
     }
@@ -262,16 +259,12 @@
     }
 
     function toggleMic() {
-        if (!recognition) {
-            setupSpeechRecognition();
-        }
+        if (!recognition) setupSpeechRecognition();
 
         if (!isRecording) {
             try {
                 recognition.start();
             } catch (e) {
-                console.error("Start Error:", e);
-                // 이미 시작된 경우 재설정
                 recognition.stop();
                 setTimeout(() => recognition.start(), 200);
             }
@@ -290,7 +283,7 @@
     async function processWithGemini(rawText) {
         const apiKey = document.getElementById('apiKeyInput').value.trim();
         if (!apiKey) {
-            showAlert("Gemini API Key를 입력하세요.");
+            showAlert("Gemini API Key를 상단 입력 칸에 넣어야 합니다.");
             return;
         }
 
@@ -312,6 +305,7 @@ Return strictly JSON matching this structure:
   "entities": ["100,000 MT", "CIF Korea", "USD 1,200"]
 }`;
 
+        // 최신 및 보편적 호환 모델명 지정
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
         try {
@@ -324,13 +318,19 @@ Return strictly JSON matching this structure:
                 })
             });
 
+            if (!response.ok) {
+                const errData = await response.json();
+                const errMsg = errData.error ? errData.error.message : response.statusText;
+                showAlert(`HTTP ${response.status} 오류: ${errMsg}`);
+                return;
+            }
+
             const data = await response.json();
             const resultJson = JSON.parse(data.candidates[0].content.parts[0].text);
             renderResult(rawText, resultJson);
 
         } catch (err) {
-            console.error(err);
-            showAlert("API 호출 오류가 발생했습니다. 키를 확인하세요.");
+            showAlert("네트워크/호출 예외 발생: " + err.message);
         }
     }
 
