@@ -257,10 +257,10 @@
     <div class="card-stack">
         <div class="card raw-box">
             <div class="card-header">
-                <span>✏️ 원문 (터치하여 수정 가능)</span>
-                <button class="btn btn-retranslate" onclick="retranslateManual()">⚡ 수동 번역 실행</button>
+                <span>✏️ 인식된 원문</span>
+                <button class="btn btn-retranslate" onclick="retranslateManual()">⚡ 재번역</button>
             </div>
-            <textarea id="rawInput" class="raw-textarea" placeholder="마이크를 켜고 말씀하세요. 말씀이 다 끝난 후 완료 버튼을 누르시면 됩니다."></textarea>
+            <textarea id="rawInput" class="raw-textarea" placeholder="음성 인식 결과가 여기에 표시됩니다."></textarea>
         </div>
 
         <div class="card">
@@ -287,7 +287,6 @@
     let recognition = null;
     let isRecording = false;
     let currentLang = 'ko-KR';
-    let finalTranscript = '';
 
     window.onload = () => {
         const savedKey = localStorage.getItem('gemini_api_key');
@@ -325,51 +324,43 @@
 
         try {
             recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            
-            // 핵심 수정: 중복 입력을 방지하기 위해 실시간 중간 인식(interim)을 끕니다.
-            recognition.interimResults = false; 
-            
+            recognition.continuous = false; // 단발성 사용으로 팝업 재요청 문제 방지
+            recognition.interimResults = false; // 중복 입력 방지
             recognition.lang = currentLang;
 
             recognition.onstart = () => {
                 isRecording = true;
-                finalTranscript = '';
                 const btn = document.getElementById('micBtn');
-                btn.innerText = "🛑 음성 인식 완료 및 번역";
+                btn.innerText = "🛑 듣고 있는 중...";
                 btn.className = "btn btn-danger";
-                document.getElementById('rawInput').value = "";
             };
 
             recognition.onresult = (event) => {
-                // 완전히 확정된 문장만 이벤트 인덱스로 가져와 누적합니다.
+                let textResult = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript.trim() + ' ';
+                        textResult += event.results[i][0].transcript.trim();
                     }
                 }
-                document.getElementById('rawInput').value = finalTranscript.trim();
+                
+                if (textResult) {
+                    document.getElementById('rawInput').value = textResult;
+                    processWithGemini(textResult); // 이전처럼 말하자마자 자동 번역 실행
+                }
             };
 
             recognition.onerror = (event) => {
                 console.error("STT Error:", event.error);
                 if (event.error === 'not-allowed') {
-                    showAlert("마이크 접근 권한이 거부되었습니다.");
+                    showAlert("마이크 접근 권한이 거부되었습니다. 브라우저 주소창 왼쪽 아이콘을 눌러 권한을 '허용'해 주세요.");
                 } else if (event.error !== 'no-speech') {
                     showAlert("음성 인식 오류: " + event.error);
                 }
+                stopMicUI();
             };
 
             recognition.onend = () => {
-                if (isRecording) {
-                    try {
-                        recognition.start();
-                    } catch (e) {
-                        stopMicUI();
-                    }
-                } else {
-                    stopMicUI();
-                }
+                stopMicUI();
             };
         } catch (e) {
             showAlert("음성 인식 초기화 실패: " + e.message);
@@ -401,11 +392,6 @@
             isRecording = false;
             recognition.stop();
             stopMicUI();
-            
-            const textToTranslate = document.getElementById('rawInput').value.trim();
-            if (textToTranslate) {
-                processWithGemini(textToTranslate);
-            }
         }
     }
 
