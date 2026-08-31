@@ -257,10 +257,10 @@
     <div class="card-stack">
         <div class="card raw-box">
             <div class="card-header">
-                <span>✏️ 원문 (누적 입력 중)</span>
+                <span>✏️ 원문 (터치하여 수정 가능)</span>
                 <button class="btn btn-retranslate" onclick="retranslateManual()">⚡ 수동 번역 실행</button>
             </div>
-            <textarea id="rawInput" class="raw-textarea" placeholder="마이크를 켜고 편하게 말씀하세요. 말씀이 끝나면 '🛑 완료' 버튼을 누르시면 됩니다."></textarea>
+            <textarea id="rawInput" class="raw-textarea" placeholder="마이크를 켜고 말씀하세요. 말씀이 다 끝난 후 완료 버튼을 누르시면 됩니다."></textarea>
         </div>
 
         <div class="card">
@@ -287,7 +287,7 @@
     let recognition = null;
     let isRecording = false;
     let currentLang = 'ko-KR';
-    let finalTranscript = ''; // 누적 텍스트 저장을 위한 변수
+    let finalTranscript = '';
 
     window.onload = () => {
         const savedKey = localStorage.getItem('gemini_api_key');
@@ -325,9 +325,11 @@
 
         try {
             recognition = new SpeechRecognition();
-            // 연속 인식 옵션을 true로 설정하여 중간 끊김 방지
             recognition.continuous = true;
-            recognition.interimResults = true;
+            
+            // 핵심 수정: 중복 입력을 방지하기 위해 실시간 중간 인식(interim)을 끕니다.
+            recognition.interimResults = false; 
+            
             recognition.lang = currentLang;
 
             recognition.onstart = () => {
@@ -340,17 +342,13 @@
             };
 
             recognition.onresult = (event) => {
-                let interimTranscript = '';
-
+                // 완전히 확정된 문장만 이벤트 인덱스로 가져와 누적합니다.
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript + ' ';
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
+                        finalTranscript += event.results[i][0].transcript.trim() + ' ';
                     }
                 }
-
-                document.getElementById('rawInput').value = finalTranscript + interimTranscript;
+                document.getElementById('rawInput').value = finalTranscript.trim();
             };
 
             recognition.onerror = (event) => {
@@ -362,7 +360,6 @@
                 }
             };
 
-            // 안드로이드 크롬 등에서 강제로 끊어졌을 때 지속적으로 녹음 중이면 자동 재시작
             recognition.onend = () => {
                 if (isRecording) {
                     try {
@@ -401,7 +398,6 @@
                 }, 200);
             }
         } else {
-            // 녹음 중단 누르면 마이크 끄고 누적된 텍스트 전체 번역 실행
             isRecording = false;
             recognition.stop();
             stopMicUI();
